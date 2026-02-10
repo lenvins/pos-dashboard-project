@@ -1,0 +1,35 @@
+name: pos_dashboard
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.7.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  fl_chart: ^0.70.2
+  intl: ^0.20.2
+  get: ^4.7.2
+  http: ^1.3.0
+  get_storage: ^2.1.1
+  dio: ^5.4.0
+  percent_indicator: ^4.2.4
+  webview_flutter: ^4.10.0
+  flutter_local_notifications: ^19.0.0
+  flutter_timezone: ^4.1.0
+  timezone: ^0.10.0
+  shared_preferences: ^2.2.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/image/
+    - assets/terms_and_conditions.html
