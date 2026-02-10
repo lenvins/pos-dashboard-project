@@ -2,7 +2,7 @@ class AppConstants {
   static const String APP_NAME = 'ShoppazingDashboard';
   static const int APP_VERSION = 1;
 
-  static const String BASE_URL = "http://test.shoppazing.com/api/";
+  static const String BASE_URL = "http://jaramburo19-001-site11.ftempurl.com/api/";
 
   static const String SENDOTP = "shop/sendotp";
   static const String VERIFYOTP = "shop/verifyotplogin";
