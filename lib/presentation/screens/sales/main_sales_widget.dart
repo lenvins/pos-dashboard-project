@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:pos_dashboard/core/utils/dimensions.dart';
 
 class MainSalesWidget extends StatelessWidget {

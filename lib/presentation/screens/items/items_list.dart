@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pos_dashboard/core/utils/dimensions.dart';
 import 'package:pos_dashboard/presentation/controllers/item_controller.dart';
-import 'package:pos_dashboard/core/utils/app_constants.dart';
 import 'package:pos_dashboard/data/models/items_model.dart'; // Import the Items model
 
 class ItemsList extends StatefulWidget {

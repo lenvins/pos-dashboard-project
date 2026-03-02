@@ -25,12 +25,12 @@ class StoreSelector extends StatefulWidget {
   final ValueChanged<List<int>> onSelectionChanged;
 
   const StoreSelector({
-    Key? key,
+    super.key,
     required this.initialSelection,
     required this.availableStores,
     required this.onSelectionChanged,
     this.isLoading = false,
-  }) : super(key: key);
+  });
 
   @override
   _StoreSelectorState createState() => _StoreSelectorState();

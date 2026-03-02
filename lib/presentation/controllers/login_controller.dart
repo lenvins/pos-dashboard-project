@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:get/get.dart';
 import 'package:dio/dio.dart' as dio;
@@ -92,28 +91,27 @@ class LoginController extends GetxController {
       final response = await loginRepository.login(username, password);
 
       if (response.statusCode == 200) {
-        tempCredentials.value = {'username': username, 'password': password};
-        
         // Store response data in loginData
         if (response.data != null) {
           loginData.value = LoginModel.fromJson(response.data);
           
-          // Check if there's a temporary access token in the initial login response
+          // Use access token from login response
           if (response.data['access_token'] != null) {
             _accessToken.value = response.data['access_token'];
           }
+
+          if (_accessToken.value.isEmpty &&
+              loginData.value?.accessToken != null &&
+              loginData.value!.accessToken!.isNotEmpty) {
+            _accessToken.value = loginData.value!.accessToken!;
+          }
+
+          final prefs = await _prefs;
+          await prefs.setString('access_token', _accessToken.value);
+          await prefs.setString('loginData', jsonEncode(loginData.value));
         }
 
-        // Get the SendOtpRepo and call getSendOTP with the current phone number and userId
-        final sendOtpRepo = Get.find<SendOtpRepo>();
-        await sendOtpRepo.getSendOTP(
-          phoneNumber: loginData.value?.phoneNumber,
-          userId: loginData.value?.userId,
-          accessToken: _accessToken.value
-        );
-
-        isOTPRequired.value = true;
-        Get.toNamed('/otp-verification');
+        Get.offAllNamed('/dashboard');
       } else {
         errorMessage.value = "Login failed. Please check your credentials.";
       }
@@ -121,7 +119,12 @@ class LoginController extends GetxController {
       String error = "Login failed. Please try again";
 
       if (e is dio.DioException) {
-        if (e.response?.statusCode == 400) {
+        if (e.type == dio.DioExceptionType.connectionError ||
+            e.type == dio.DioExceptionType.connectionTimeout ||
+            e.type == dio.DioExceptionType.receiveTimeout ||
+            e.type == dio.DioExceptionType.sendTimeout) {
+          error = "No internet connection. Please check your network.";
+        } else if (e.response?.statusCode == 400) {
           error = "Invalid username or password";
         } else if (e.response?.statusCode == 500) {
           error = "Server error. Please try again later";
@@ -172,7 +175,7 @@ class LoginController extends GetxController {
               await prefs.setString('access_token', _accessToken.value);
               await prefs.setString('loginData', jsonEncode(loginData.value));
 
-              Get.toNamed('/pin-verification');
+              Get.toNamed('/dashboard');
             } else {
               errorMessage.value = "Login failed. Please try again."; 
             }

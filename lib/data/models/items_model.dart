@@ -18,13 +18,13 @@ class ItemModel {
     if (json['Items'] != null) {
       _items = <Items>[];
       json['Items'].forEach((v) {
-        _items!.add(new Items.fromJson(v));
+        _items.add(Items.fromJson(v));
       });
     }
     if (json['Categories'] != null) {
       _categories = <Categories>[];
       json['Categories'].forEach((v) {
-        _categories!.add(new Categories.fromJson(v));
+        _categories.add(Categories.fromJson(v));
       });
     }
   }

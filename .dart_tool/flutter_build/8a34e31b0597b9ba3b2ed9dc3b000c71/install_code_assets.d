@@ -1,0 +1,1 @@
+ C:\\projects\\pos-dashboard-project\\.dart_tool\\flutter_build\\8a34e31b0597b9ba3b2ed9dc3b000c71\\native_assets.json: 

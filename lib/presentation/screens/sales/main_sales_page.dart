@@ -21,6 +21,7 @@ class _MainSalesPage extends State<MainSalesPage> {
   final MerchantController merchantController = Get.find<MerchantController>();
   final TopDashboardController topDashboardController =
       Get.find<TopDashboardController>();
+  final ScrollController _salesScrollController = ScrollController();
 
   DateTime selectedDate = DateTime.now();
   int? selectedStoreId;
@@ -53,6 +54,12 @@ class _MainSalesPage extends State<MainSalesPage> {
     }
   }
 
+  @override
+  void dispose() {
+    _salesScrollController.dispose();
+    super.dispose();
+  }
+
   List<Stores> getStores() {
     if (merchantController.storeList.isEmpty) {
       return [];
@@ -62,74 +69,78 @@ class _MainSalesPage extends State<MainSalesPage> {
 
   @override
   Widget build(BuildContext context) {
-    String? viewMode;
-
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(Dimensions.font18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: DateSelector(
-                  selectedDate: selectedDate,
-                  onDateChanged: (newDate) {
-                    setState(() {
-                      selectedDate = newDate;
-                    });
-                    _loadTopDashboardData();
-                  },
-                ),
-              ),
-              //space for additional information
-            ],
-          ),
-          SizedBox(height: Dimensions.height10),
-          SizedBox(
-            height: Dimensions.height40,
-            width: double.infinity,
-            child: Obx(() {
-              if (merchantController.isLoading.value) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (merchantController.storeList.isEmpty) {
-                return const Center(child: Text('No Stores Available'));
-              }
-              return ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: merchantController.storeList.length,
-                separatorBuilder:
-                    (context, index) => SizedBox(width: Dimensions.width10),
-                itemBuilder: (context, index) {
-                  final store = merchantController.storeList[index];
-                  return ChoiceChip(
-                    label: Text(store.storeName ?? 'Unknown Store'),
-                    selected: selectedStoreId == store.storeId,
-                    onSelected: (isSelected) {
-                      if (isSelected) {
-                        setState(() {
-                          selectedStoreId = store.storeId;
-                          selectedStoreName = store.storeName;
-                          _loadTopDashboardData();
-                        });
-                      }
+    return Scrollbar(
+      controller: _salesScrollController,
+      thumbVisibility: true,
+      interactive: true,
+      child: SingleChildScrollView(
+        controller: _salesScrollController,
+        padding: EdgeInsets.all(Dimensions.font18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  child: DateSelector(
+                    selectedDate: selectedDate,
+                    onDateChanged: (newDate) {
+                      setState(() {
+                        selectedDate = newDate;
+                      });
+                      _loadTopDashboardData();
                     },
-                  );
-                },
-              );
-            }),
-          ),
-          SizedBox(height: Dimensions.height20),
-          ChartSection(),
-          SizedBox(height: Dimensions.height20),
-          ItemsSection(),
-          SizedBox(height: Dimensions.height20),
-          CategoriesSection(),
-          SizedBox(height: Dimensions.height20),
-          EmployeesSection(),
-        ],
+                  ),
+                ),
+                //space for additional information
+              ],
+            ),
+            SizedBox(height: Dimensions.height10),
+            SizedBox(
+              height: Dimensions.height40,
+              width: double.infinity,
+              child: Obx(() {
+                if (merchantController.isLoading.value) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (merchantController.storeList.isEmpty) {
+                  return const Center(child: Text('No Stores Available'));
+                }
+                return ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: merchantController.storeList.length,
+                  separatorBuilder:
+                      (context, index) => SizedBox(width: Dimensions.width10),
+                  itemBuilder: (context, index) {
+                    final store = merchantController.storeList[index];
+                    return ChoiceChip(
+                      label: Text(store.storeName ?? 'Unknown Store'),
+                      selected: selectedStoreId == store.storeId,
+                      onSelected: (isSelected) {
+                        if (isSelected) {
+                          setState(() {
+                            selectedStoreId = store.storeId;
+                            selectedStoreName = store.storeName;
+                            _loadTopDashboardData();
+                          });
+                        }
+                      },
+                    );
+                  },
+                );
+              }),
+            ),
+            SizedBox(height: Dimensions.height20),
+            ChartSection(),
+            SizedBox(height: Dimensions.height20),
+            ItemsSection(),
+            SizedBox(height: Dimensions.height20),
+            CategoriesSection(),
+            SizedBox(height: Dimensions.height20),
+            EmployeesSection(),
+          ],
+        ),
       ),
     );
   }

@@ -19,7 +19,7 @@ class MerchantModel {
     if (json['Stores'] != null) {
       _stores = <Stores>[];
       json['Stores'].forEach((v) {
-        _stores!.add(new Stores.fromJson(v));
+        _stores.add(Stores.fromJson(v));
       });
     }
   }

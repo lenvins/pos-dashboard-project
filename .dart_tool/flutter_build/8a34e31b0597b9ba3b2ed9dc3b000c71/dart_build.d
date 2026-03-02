@@ -1,0 +1,1 @@
+ C:\\projects\\pos-dashboard-project\\.dart_tool\\flutter_build\\8a34e31b0597b9ba3b2ed9dc3b000c71\\dart_build_result.json:  C:\\flutter\\flutter\\bin\\cache\\dart-sdk\\version C:\\projects\\pos-dashboard-project\\.dart_tool\\package_config.json C:\\projects\\pos-dashboard-project\\pubspec.yaml c:\\projects\\pos-dashboard-project\\.dart_tool\\package_config.json

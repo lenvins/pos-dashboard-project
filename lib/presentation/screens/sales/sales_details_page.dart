@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pos_dashboard/core/utils/dimensions.dart';
 import 'package:pos_dashboard/presentation/controllers/top_dashboard_controller.dart';
-import 'package:pos_dashboard/presentation/controllers/merchant_controller.dart';
 import 'package:pos_dashboard/presentation/widgets/date_selector.dart';
 
 class SalesDetailsPage extends StatefulWidget {

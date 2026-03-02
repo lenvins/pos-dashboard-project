@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 import 'package:dio/dio.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:pos_dashboard/core/dependencies.dart' as dep;
-import 'package:pos_dashboard/data/models/verify_pin_model.dart';
 import 'package:pos_dashboard/data/repositories/item_repo.dart';
 import 'package:pos_dashboard/data/repositories/merchant_repo.dart';
 import 'package:pos_dashboard/data/repositories/send_otp_repo.dart';
@@ -48,7 +47,7 @@ Future<void> main() async {
     Get.put<VerifyPinRepo>(VerifyPinRepo(apiClient: Get.find(), loginController: Get.find()));
 
     Get.lazyPut(() => OTPController(), fenix: true);
-
+    
     Get.put<ItemRepository>(ItemRepository(apiClient: Get.find(), loginController: Get.find()));
     Get.put<ItemController>(ItemController(itemRepository: Get.find()));
 
@@ -96,20 +95,14 @@ class PosDashboardApp extends StatelessWidget {
         }
 
         final initialRoute = snapshot.data ?? '/';
-        final isAuthScreen = initialRoute == '/' ||
-            initialRoute == '/otp-verification' ||
-            initialRoute == '/pin-verification';
 
         return GetBuilder<ThemeController>(
           builder: (themeController) => GetMaterialApp(
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
-            darkTheme: isAuthScreen ? null : AppTheme.darkTheme,
-            themeMode: isAuthScreen
-                ? ThemeMode.light
-                : (themeController.isDarkMode
-                    ? ThemeMode.dark
-                    : ThemeMode.light),
+            darkTheme: AppTheme.darkTheme,
+            themeMode:
+                themeController.isDarkMode ? ThemeMode.dark : ThemeMode.light,
             initialRoute: initialRoute,
             getPages: [
               GetPage(

@@ -4,10 +4,10 @@ class SendOTPModel {
 
   SendOTPModel({int? statusCode, String? message}) {
     if (statusCode != null) {
-      this._statusCode = statusCode;
+      _statusCode = statusCode;
     }
     if (message != null) {
-      this._message = message;
+      _message = message;
     }
   }
 

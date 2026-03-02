@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pos_dashboard/core/utils/dimensions.dart';
 import 'package:pos_dashboard/presentation/controllers/login_controller.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
-  LoginScreen({super.key});
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -16,6 +15,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController usernameController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final Color primaryColor = const Color(0xFF00308F);
+  bool isPasswordVisible = false;
 
   @override
   Widget build(BuildContext context) {
@@ -25,13 +25,14 @@ class _LoginScreenState extends State<LoginScreen> {
         child: SingleChildScrollView(
           padding: EdgeInsets.all(Dimensions.height16),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset('assets/image/logo.png', height: 140, width: 140),
-              const SizedBox(height: 40),
-
+              Image.asset('assets/image/shoppazingnobg.png', height: 130, width: 130),
+              Image.asset('assets/image/shoppazingdashboard.png', height: 80, width: 250),
+            
               TextField(
                 controller: usernameController,
+                style: const TextStyle(color: Colors.black),
+                cursorColor: Colors.black,
                 decoration: InputDecoration(
                   labelText: 'Username',
                   labelStyle: TextStyle(color: primaryColor),
@@ -50,11 +51,24 @@ class _LoginScreenState extends State<LoginScreen> {
 
               TextField(
                 controller: passwordController,
-                obscureText: true,
+                obscureText: !isPasswordVisible,
+                style: const TextStyle(color: Colors.black),
+                cursorColor: Colors.black,
                 decoration: InputDecoration(
                   labelText: 'Password',
                   labelStyle: TextStyle(color: primaryColor),
                   prefixIcon: Icon(Icons.lock, color: primaryColor),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                      color: primaryColor,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        isPasswordVisible = !isPasswordVisible;
+                      });
+                    },
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                     borderSide: BorderSide(color: primaryColor),

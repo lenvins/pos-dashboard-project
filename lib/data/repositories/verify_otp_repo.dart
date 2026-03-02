@@ -17,11 +17,13 @@ class VerifyOtpRepo extends GetxService {
   Future<Response> getVerifyOTP(String otp) async {
 
     String accessToken = loginController.accessToken;
+    String phoneNumber = loginController.phoneNumber;
+    String userId = loginController.userId;
 
     Map<String, dynamic> body = {
       "OTP": otp,
-      "MobileNo": "09627551578",
-      "UserId": "ea0e3e85-0820-4856-90a0-59cef96eaf56",
+      "MobileNo": phoneNumber,
+      "UserId": userId,
     };
 
     return await apiClient.postData(

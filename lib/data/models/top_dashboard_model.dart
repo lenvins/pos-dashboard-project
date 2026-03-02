@@ -53,19 +53,19 @@ class TopDashboardModel {
     if (json['Top5Categories'] != null) {
       _top5Categories = <Top5Categories>[];
       json['Top5Categories'].forEach((v) {
-        _top5Categories!.add(new Top5Categories.fromJson(v));
+        _top5Categories.add(Top5Categories.fromJson(v));
       });
     }
     if (json['Top5Employees'] != null) {
       _top5Employees = <Top5Employees>[];
       json['Top5Employees'].forEach((v) {
-        _top5Employees!.add(new Top5Employees.fromJson(v));
+        _top5Employees.add(Top5Employees.fromJson(v));
       });
     }
     if (json['Top5Items'] != null) {
       _top5Items = <Top5Items>[];
       json['Top5Items'].forEach((v) {
-        _top5Items!.add(new Top5Items.fromJson(v));
+        _top5Items.add(Top5Items.fromJson(v));
       });
     }
   }

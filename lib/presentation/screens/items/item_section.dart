@@ -4,7 +4,6 @@ import 'package:pos_dashboard/core/utils/dimensions.dart';
 import 'package:pos_dashboard/data/models/top_dashboard_model.dart';
 import 'package:pos_dashboard/presentation/controllers/top_dashboard_controller.dart';
 import 'package:pos_dashboard/presentation/screens/sales/main_sales_widget.dart';
-import 'package:pos_dashboard/presentation/screens/settings/settings_screen.dart';
 
 class ItemsSection extends StatefulWidget {
   const ItemsSection({super.key});

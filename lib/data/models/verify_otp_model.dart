@@ -12,19 +12,19 @@ class VerifyOTPModel {
       String? firstName,
       String? lastName}) {
     if (statusCode != null) {
-      this._statusCode = statusCode;
+      _statusCode = statusCode;
     }
     if (message != null) {
-      this._message = message;
+      _message = message;
     }
     if (userId != null) {
-      this._userId = userId;
+      _userId = userId;
     }
     if (firstName != null) {
-      this._firstName = firstName;
+      _firstName = firstName;
     }
     if (lastName != null) {
-      this._lastName = lastName;
+      _lastName = lastName;
     }
   }
 

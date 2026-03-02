@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:pos_dashboard/data/repositories/item_repo.dart';
 import 'package:pos_dashboard/presentation/controllers/dashboard_controller.dart';
-import 'package:pos_dashboard/presentation/controllers/item_controller.dart';
-import 'package:pos_dashboard/presentation/controllers/login_controller.dart';
 import 'package:pos_dashboard/presentation/controllers/theme_controller.dart';
 import 'package:pos_dashboard/presentation/screens/settings/settings_screen.dart';
 import '../sales/main_sales_page.dart';

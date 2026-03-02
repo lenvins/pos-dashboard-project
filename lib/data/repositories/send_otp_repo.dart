@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart' as dio;
 import 'package:get/get.dart';
 import 'package:pos_dashboard/core/api/api_client.dart';
 import 'package:pos_dashboard/core/utils/app_constants.dart';

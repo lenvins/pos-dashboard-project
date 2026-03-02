@@ -11,70 +11,49 @@ class BarChartSection extends StatefulWidget {
 }
 
 class _BarChartSectionState extends State<BarChartSection> {
-  final TopDashboardController topDashboardController =
-      Get.find<TopDashboardController>();
-  late List<DateTime> visibleDates;
-  late DateTime selectedDate;
-  late int currentHour;
+  final ScrollController _chartScrollController = ScrollController();
 
-  @override
-  void initState() {
-    super.initState();
-    _initializeDates();
-  }
-
-  void _initializeDates() {
-    selectedDate = DateTime.now();
-    currentHour = selectedDate.hour;
-    _updateVisibleDates();
-  }
-
-  void _updateVisibleDates() {
-    // Get previous, current, and next hour
-    visibleDates = List.generate(3, (index) {
-      int hour = (currentHour - 1 + index) % 24;
-      return DateTime(
-        selectedDate.year,
-        selectedDate.month,
-        selectedDate.day,
-        hour,
-      );
-    });
+  Widget _buildLegendItem({
+    required BuildContext context,
+    required Color color,
+    required String label,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
+      ],
+    );
   }
 
   List<double> _parseHourlyData(String? barchartData) {
-    if (barchartData == null) return List.filled(24, 0.0);
+    if (barchartData == null || barchartData.trim().isEmpty) {
+      return List.filled(24, 0.0);
+    }
+
     final values = barchartData.split(',');
     if (values.length < 24) {
       return [
-        ...values.map((v) => double.tryParse(v) ?? 0.0),
+        ...values.map((v) => double.tryParse(v.trim()) ?? 0.0),
         ...List.filled(24 - values.length, 0.0),
       ];
     }
-    return values.map((v) => double.tryParse(v) ?? 0.0).toList();
+    return values
+        .take(24)
+        .map((v) => double.tryParse(v.trim()) ?? 0.0)
+        .toList();
   }
 
-  List<double> _getVisibleValues(List<double> allValues) {
-    // Get values for previous, current, and next hour
-    return List.generate(3, (index) {
-      int hour = (currentHour - 1 + index) % 24;
-      return allValues[hour];
-    });
-  }
-
-  void _onSwipeLeft() {
-    setState(() {
-      currentHour = (currentHour + 1) % 24;
-      _updateVisibleDates();
-    });
-  }
-
-  void _onSwipeRight() {
-    setState(() {
-      currentHour = (currentHour - 1) % 24;
-      if (currentHour < 0) currentHour = 23;
-      _updateVisibleDates();
-    });
+  @override
+  void dispose() {
+    _chartScrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -82,24 +61,56 @@ class _BarChartSectionState extends State<BarChartSection> {
     return GetBuilder<TopDashboardController>(
       builder: (controller) {
         final allHourlyValues = _parseHourlyData(controller.barchartPerHour);
-        final visibleValues = _getVisibleValues(allHourlyValues);
+        final chartWidth = allHourlyValues.length * 56.0;
 
-        return GestureDetector(
-          onHorizontalDragEnd: (details) {
-            if (details.primaryVelocity! > 0) {
-              _onSwipeRight();
-            } else if (details.primaryVelocity! < 0) {
-              _onSwipeLeft();
-            }
-          },
-          child: SizedBox(
-            height: 280,
-            child: BarChartWidget(
-              dates: visibleDates,
-              values: visibleValues,
-              selectedDate: selectedDate,
-              currentHour: currentHour,
-            ),
+        return SizedBox(
+          height: 340,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                spacing: 16,
+                runSpacing: 6,
+                children: [
+                  _buildLegendItem(
+                    context: context,
+                    color: BarChartWidget.currentHourColor,
+                    label: 'Current Hour',
+                  ),
+                  _buildLegendItem(
+                    context: context,
+                    color: BarChartWidget.highestIncomeColor,
+                    label: 'Highest Income',
+                  ),
+                  _buildLegendItem(
+                    context: context,
+                    color: BarChartWidget.lowestIncomeColor,
+                    label: 'Lowest Income',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Expanded(
+                child: Scrollbar(
+                  controller: _chartScrollController,
+                  thumbVisibility: true,
+                  trackVisibility: true,
+                  interactive: true,
+                  notificationPredicate:
+                      (notification) =>
+                          notification.metrics.axis == Axis.horizontal,
+                  child: SingleChildScrollView(
+                    controller: _chartScrollController,
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(
+                      width: chartWidth,
+                      height: 280,
+                      child: BarChartWidget(values: allHourlyValues),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         );
       },

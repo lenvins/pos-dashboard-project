@@ -20,7 +20,7 @@ class OTPController extends GetxController {
       if (timeLeft.value > 0) {
         timeLeft.value--;
       } else {
-        isExpired.value = false;
+        isExpired.value = true;
         timer.cancel();
       }
     });

@@ -45,20 +45,20 @@ class LoginModel {
   }
 
     Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['access_token'] = this.accessToken;
-    data['token_type'] = this.tokenType;
-    data['expires_in'] = this.expiresIn;
-    data['userName'] = this.userName;
-    data['BusinessName'] = this.businessName;
-    data['MerchantId'] = this.merchantId;
-    data['UserId'] = this.userId;
-    data['Firstname'] = this.firstname;
-    data['Lastname'] = this.lastname;
-    data['PhoneNumber'] = this.phoneNumber;
-    data['PhoneNumberConfirmed'] = this.phoneNumberConfirmed;
-    data['.issued'] = this.issued;
-    data['.expires'] = this.expires;
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['access_token'] = accessToken;
+    data['token_type'] = tokenType;
+    data['expires_in'] = expiresIn;
+    data['userName'] = userName;
+    data['BusinessName'] = businessName;
+    data['MerchantId'] = merchantId;
+    data['UserId'] = userId;
+    data['Firstname'] = firstname;
+    data['Lastname'] = lastname;
+    data['PhoneNumber'] = phoneNumber;
+    data['PhoneNumberConfirmed'] = phoneNumberConfirmed;
+    data['.issued'] = issued;
+    data['.expires'] = expires;
     return data;
   }
 }
