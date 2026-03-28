@@ -20,16 +20,65 @@ class VerifyOtpRepo extends GetxService {
     String phoneNumber = loginController.phoneNumber;
     String userId = loginController.userId;
 
-    Map<String, dynamic> body = {
+    print("=== VERIFYING OTP ===");
+    print("OTP Code: $otp");
+    print("Phone Number: $phoneNumber");
+    print("User ID: $userId");
+    print("Access Token: $accessToken");
+
+    // Try primary endpoint first: shop/verifyotplogin
+    print("\n📤 Attempt 1: Using ${AppConstants.VERIFYOTP}");
+    
+    Map<String, dynamic> body1 = {
       "OTP": otp,
       "MobileNo": phoneNumber,
       "UserId": userId,
+      "AppHash": "XMsemExH",
     };
 
-    return await apiClient.postData(
-      AppConstants.VERIFYOTP, 
-      body,
-      authToken: accessToken,
-    );
+    print("Request Body: $body1");
+
+    try {
+      final response = await apiClient.postData(
+        AppConstants.VERIFYOTP, 
+        body1,
+        authToken: accessToken,
+      );
+      
+      print("Response Status: ${response.statusCode}");
+      print("Response Data: ${response.data}");
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print("✅ Attempt 1 succeeded!");
+        return response;
+      }
+      
+      // If primary endpoint fails, try fallback endpoint
+      print("\n⚠️ Attempt 1 failed, trying fallback endpoint: ${AppConstants.VERIFYOTP_FALLBACK}");
+      
+      Map<String, dynamic> body2 = {
+        "OTP": otp,
+        "MobileNo": phoneNumber,
+        "UserId": userId,
+        "AppHash": "XMsemExH",
+      };
+      
+      print("Request Body: $body2");
+      
+      final response2 = await apiClient.postData(
+        AppConstants.VERIFYOTP_FALLBACK,
+        body2,
+        authToken: accessToken,
+      );
+      
+      print("Response Status (Fallback): ${response2.statusCode}");
+      print("Response Data (Fallback): ${response2.data}");
+      
+      return response2;
+      
+    } catch (e) {
+      print("Error verifying OTP: $e");
+      rethrow;
+    }
   }
 }

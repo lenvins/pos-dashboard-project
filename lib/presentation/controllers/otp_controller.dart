@@ -3,7 +3,7 @@ import 'dart:async';
 
 class OTPController extends GetxController {
   Timer? _timer;
-  final RxInt timeLeft = 300.obs;
+  final RxInt timeLeft = 60.obs;
   final RxBool isExpired = false.obs;
 
   @override
@@ -14,7 +14,7 @@ class OTPController extends GetxController {
 
   void startTimer() {
     isExpired.value = false;
-    timeLeft.value = 300;
+    timeLeft.value = 60;
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (timeLeft.value > 0) {

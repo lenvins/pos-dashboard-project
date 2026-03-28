@@ -17,24 +17,37 @@ class MerchantController extends GetxController {
   Future<void> getMerchantList() async {
     isLoading.value = true;
     try {
+      print("📦 [MerchantController] Starting getMerchantList()");
+      
       dio.Response response = await merchantRepository.getMerchantList();
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        print("Got data. Source: merchant_controller.dart");
-        MerchantModel merchantModel = MerchantModel.fromJson(response.data);
-        _storeList = merchantModel.stores;
-        update();
+      print("📤 [MerchantController] Response Status: ${response.statusCode}");
+      print("📤 [MerchantController] Response Data: ${response.data}");
 
-        print("Number of stores loaded: ${_storeList.length}");
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print("✅ [MerchantController] Got data. Parsing merchant model...");
+        
+        MerchantModel merchantModel = MerchantModel.fromJson(response.data);
+        _storeList = merchantModel.stores ?? [];
+        
+        print("✅ [MerchantController] Number of stores loaded: ${_storeList.length}");
 
         if (_storeList.isNotEmpty) {
-          print("Sample store: ${_storeList.first}");
+          print("✅ [MerchantController] Stores:");
+          for (int i = 0; i < _storeList.length; i++) {
+            print("   Store $i: ${_storeList[i].storeName} (ID: ${_storeList[i].storeId})");
+          }
+        } else {
+          print("⚠️ [MerchantController] No stores in response");
         }
+        
+        update();
       } else {
-        print("No data. Source: merchant_controller.dart, status code: ${response.statusCode}");
+        print("❌ [MerchantController] Failed to get data. Status: ${response.statusCode}");
+        print("Response: ${response.data}");
       }
     } catch (e) {
-      print("Error fetching store list: $e");
+      print("❌ [MerchantController] Error fetching store list: $e");
     } finally {
       isLoading.value = false;
     }

@@ -21,8 +21,8 @@
     },
     "linking_enabled": false
   },
-  "out_dir_shared": "C:\\projects\\pos-dashboard-project\\.dart_tool\\hooks_runner\\shared\\objective_c\\build\\",
-  "out_file": "C:\\projects\\pos-dashboard-project\\.dart_tool\\hooks_runner\\objective_c\\d1b95d2788858c96c6c44cfc71a5a3c2\\output.json",
+  "out_dir_shared": "C:\\original project\\pos-dashboard-project\\.dart_tool\\hooks_runner\\shared\\objective_c\\build\\",
+  "out_file": "C:\\original project\\pos-dashboard-project\\.dart_tool\\hooks_runner\\objective_c\\d1b95d2788858c96c6c44cfc71a5a3c2\\output.json",
   "package_name": "objective_c",
   "package_root": "C:\\Users\\INTEL\\AppData\\Local\\Pub\\Cache\\hosted\\pub.dev\\objective_c-9.3.0\\",
   "user_defines": {}

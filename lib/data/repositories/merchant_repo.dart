@@ -21,11 +21,28 @@ class MerchantRepository extends GetxService {
   Future<Response> getMerchantList() async {
 
     String accessToken = loginController.accessToken;
+    String merchantId = loginController.merchantId;
 
-    return await apiClient.postData(
-      AppConstants.MERCHANTSTORE,
-      body,
-      authToken: accessToken
-    );
+    print("=== FETCHING MERCHANT STORES ===");
+    print("Merchant ID: $merchantId");
+    print("Access Token: ${accessToken.isNotEmpty ? 'Present' : 'Empty'}");
+    print("Endpoint: ${AppConstants.MERCHANTSTORE}");
+    print("Request Body: $body");
+
+    try {
+      final response = await apiClient.postData(
+        AppConstants.MERCHANTSTORE,
+        body,
+        authToken: accessToken
+      );
+
+      print("✅ Stores Response Status: ${response.statusCode}");
+      print("✅ Stores Response Data: ${response.data}");
+
+      return response;
+    } catch (e) {
+      print("❌ Error fetching stores: $e");
+      rethrow;
+    }
   }
 }

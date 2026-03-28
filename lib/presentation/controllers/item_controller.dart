@@ -14,32 +14,47 @@ class ItemController extends GetxController {
   List<Categories> _categoryList = [];
   List<Categories> get categoryList => _categoryList;
 
-  Future<void> getItemList() async {
+  Future<void> getItemList({
+    int storeId = 0,
+    int posId = 0,
+    int recordsPerPage = 100,
+    int offset = 0,
+  }) async {
+    print("📦 [ItemController] Starting getItemList()");
+    print("   StoreId: $storeId, POSId: $posId, Records: $recordsPerPage, Offset: $offset");
+    
     try {
-      dio.Response response = await itemRepository.getItemList();
+      dio.Response response = await itemRepository.getItemList(
+        storeId: storeId,
+        posId: posId,
+        recordsPerPage: recordsPerPage,
+        offset: offset,
+      );
+
+      print("📦 [ItemController] Response Status: ${response.statusCode}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print("Got data. Source: item_controller.dart");
+        print("✅ [ItemController] Got data");
         ItemModel itemModel = ItemModel.fromJson(response.data);
-        _itemList = itemModel.items;
-        _categoryList = itemModel.categories;
+        _itemList = itemModel.items ?? [];
+        _categoryList = itemModel.categories ?? [];
         update();
 
-        print("Number of items loaded: ${_itemList.length}");
-        print("Number of categories loaded: ${_categoryList.length}");
+        print("✅ [ItemController] Number of items loaded: ${_itemList.length}");
+        print("✅ [ItemController] Number of categories loaded: ${_categoryList.length}");
 
         if (_itemList.isNotEmpty) {
-          print("Sample item: ${_itemList.first}");
+          print("   Sample item: ${_itemList.first.itemName}");
         }
 
         if (_categoryList.isNotEmpty) {
-          print("Sample category: ${_categoryList.first}");
+          print("   Sample category: ${_categoryList.first}");
         }
       } else {
-        print("No data. Source: item_controller.dart, status code: ${response.statusCode}");
+        print("❌ [ItemController] Failed with status: ${response.statusCode}");
       }
     } catch (e) {
-      print("Error fetching item list: $e");
+      print("❌ [ItemController] Error fetching item list: $e");
     }
   }
 

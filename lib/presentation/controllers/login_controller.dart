@@ -109,9 +109,16 @@ class LoginController extends GetxController {
           final prefs = await _prefs;
           await prefs.setString('access_token', _accessToken.value);
           await prefs.setString('loginData', jsonEncode(loginData.value));
-        }
 
-        Get.offAllNamed('/dashboard');
+          // Store credentials temporarily for OTP verification
+          tempCredentials.value = {
+            'username': username,
+            'password': password
+          };
+
+          // Send OTP to user's phone
+          await _sendOTPForVerification();
+        }
       } else {
         errorMessage.value = "Login failed. Please check your credentials.";
       }
@@ -136,11 +143,64 @@ class LoginController extends GetxController {
     }
   }
 
+  Future<void> _sendOTPForVerification() async {
+    try {
+      final sendOtpRepo = Get.find<SendOtpRepo>();
+      isOTPRequired.value = true;
+
+      print("📱 Starting OTP Send Process");
+      print("Phone Number: $phoneNumber");
+      print("User ID: $userId");
+      print("Access Token: ${_accessToken.value.isNotEmpty ? 'Present' : 'Empty'}");
+
+      if (phoneNumber.isEmpty) {
+        errorMessage.value = "Phone number not found. Please contact support.";
+        print("❌ ERROR: Phone number is empty");
+        isOTPRequired.value = false;
+        return;
+      }
+
+      if (userId.isEmpty) {
+        errorMessage.value = "User ID not found. Please contact support.";
+        print("❌ ERROR: User ID is empty");
+        isOTPRequired.value = false;
+        return;
+      }
+
+      final response = await sendOtpRepo.getSendOTP(
+        phoneNumber: phoneNumber,
+        userId: userId,
+        accessToken: accessToken
+      );
+
+      print("📤 OTP Send API Response:");
+      print("Status: ${response.statusCode}");
+      print("Data: ${response.data}");
+
+      // Check if API returned success (various status codes possible)
+      if (response.statusCode == 200 || 
+          response.statusCode == 201 || 
+          (response.data != null && response.statusCode! < 300)) {
+        print("✅ OTP sent successfully!");
+        Get.offAllNamed('/otp-verification');
+      } else {
+        print("❌ OTP Send Failed - Status: ${response.statusCode}");
+        print("Response: ${response.data}");
+        errorMessage.value = "Failed to send OTP. Please try again.";
+        isOTPRequired.value = false;
+      }
+    } catch (e) {
+      print("❌ Error sending OTP: $e");
+      errorMessage.value = "Failed to send OTP: ${e.toString()}";
+      isOTPRequired.value = false;
+    }
+  }
+
   Future<void> verifyOTP(String otp) async {
     final verifyOtpRepo = Get.find<VerifyOtpRepo>();
     
-    if (otp.isEmpty) {
-      errorMessage.value = "Please enter OTP";
+    if (otp.isEmpty || otp.length != 6) {
+      errorMessage.value = "Please enter a valid 6-digit OTP";
       return;
     }
 
@@ -148,49 +208,73 @@ class LoginController extends GetxController {
     errorMessage.value = '';
 
     try {
+      print("Verifying OTP: $otp");
+      print("Access Token: $accessToken");
+      print("User ID: $userId");
+      print("Phone Number: $phoneNumber");
+      
       final response = await verifyOtpRepo.getVerifyOTP(otp);
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
+      print("OTP Response Status: ${response.statusCode}");
+      print("OTP Response Data: ${response.data}");
 
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final verifyOTPModel = VerifyOTPModel.fromJson(response.data);
         
-        if (verifyOTPModel.statusCode == 200 || verifyOTPModel.statusCode == 0) {
-          if (verifyOTPModel.userId != null) {
-            if (loginData.value == null) {
-              loginData.value = LoginModel();
-            }
+        print("Parsed Status Code: ${verifyOTPModel.statusCode}");
+        print("Parsed Message: ${verifyOTPModel.message}");
+        print("Parsed UserId: ${verifyOTPModel.userId}");
+        
+        // Accept various success status codes
+        if ((verifyOTPModel.statusCode == 200 || 
+             verifyOTPModel.statusCode == 0 || 
+             verifyOTPModel.statusCode == 1 ||
+             verifyOTPModel.statusCode == null) &&
+            (response.statusCode ?? 500) < 300) {
+          
+          // OTP verification successful - proceed with login
+          dio.Response loginResponse = await loginRepository.login(
+            tempCredentials.value['username'] ?? '',
+            tempCredentials.value['password'] ?? '',
+          );
 
-            loginData.value!.userId = verifyOTPModel.userId!;
+          print("Login Response Status: ${loginResponse.statusCode}");
 
-            dio.Response loginResponse = await loginRepository.login(
-              tempCredentials.value['username']!,
-              tempCredentials.value['password']!,
-            );
+          if ((loginResponse.statusCode ?? 500) == 200 && loginResponse.data != null) {
+            loginData.value = LoginModel.fromJson(loginResponse.data);
+            _accessToken.value = loginResponse.data['access_token'] ?? _accessToken.value;
 
-            if (loginResponse.statusCode == 200 && loginResponse.data != null) {
-              loginData.value = LoginModel.fromJson(loginResponse.data);
-              _accessToken.value = loginResponse.data['access_token'];
+            final prefs = await _prefs;
+            await prefs.setString('access_token', _accessToken.value);
+            await prefs.setString('loginData', jsonEncode(loginData.value));
 
-              final prefs = await _prefs;
-              await prefs.setString('access_token', _accessToken.value);
-              await prefs.setString('loginData', jsonEncode(loginData.value));
-
-              Get.toNamed('/dashboard');
-            } else {
-              errorMessage.value = "Login failed. Please try again."; 
-            }
+            isOTPRequired.value = false;
+            Get.offAllNamed('/dashboard');
           } else {
-            errorMessage.value = "Missing user information.";
+            errorMessage.value = "Login failed after OTP verification. Please try again."; 
           }
         } else {
-          errorMessage.value = verifyOTPModel.message ?? "Invalid OTP";
+          errorMessage.value = verifyOTPModel.message ?? "Invalid OTP. Please try again.";
         }
+      } else if (response.statusCode == 500) {
+        // Server error - likely model mismatch
+        String errorMsg = "Server error";
+        if (response.data != null) {
+          if (response.data['Message'] != null) {
+            errorMsg = response.data['Message'];
+          }
+          if (response.data['ExceptionMessage'] != null) {
+            errorMsg = response.data['ExceptionMessage'];
+          }
+        }
+        errorMessage.value = "Verification error: $errorMsg";
+        print("❌ Server Error: $errorMsg");
       } else {
-        errorMessage.value = "OTP verification failed. Please try again.";
+        errorMessage.value = "OTP verification failed. Server error. Please try again.";
       }
     } catch (e) {
-      errorMessage.value = "OTP verification failed. Please try again.";
       print("OTP verification error: $e");
+      errorMessage.value = "OTP verification error: ${e.toString()}";
     } finally {
       isLoading.value = false;
     }
@@ -245,11 +329,15 @@ class LoginController extends GetxController {
     isLoading.value = true;
     errorMessage.value = '';
     try {
-      await sendOtpRepo.getSendOTP(
+      print("Resending OTP to: $phoneNumber");
+      final response = await sendOtpRepo.getSendOTP(
         phoneNumber: phoneNumber,
         userId: userId,
         accessToken: accessToken
       );
+      
+      print("Resend OTP Response: ${response.statusCode}");
+      print("Resend OTP Data: ${response.data}");
       
       await Future.delayed(const Duration(seconds: 2));
       Get.snackbar(
@@ -260,6 +348,7 @@ class LoginController extends GetxController {
         colorText: Colors.white,
       );
     } catch (e) {
+      print("Error resending OTP: $e");
       errorMessage.value = "Failed to resend OTP. Please try again";
     } finally {
       isLoading.value = false;

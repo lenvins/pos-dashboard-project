@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pos_dashboard/core/utils/dimensions.dart';
 import 'package:pos_dashboard/presentation/controllers/item_controller.dart';
+import 'package:pos_dashboard/presentation/controllers/merchant_controller.dart';
 import 'package:pos_dashboard/data/models/items_model.dart'; // Import the Items model
 
 class ItemsList extends StatefulWidget {
@@ -15,6 +16,7 @@ class ItemsList extends StatefulWidget {
 
 class _ItemsListState extends State<ItemsList> {
   final ItemController itemController = Get.find<ItemController>();
+  final MerchantController merchantController = Get.find<MerchantController>();
 
   @override
   void initState() {
@@ -23,7 +25,41 @@ class _ItemsListState extends State<ItemsList> {
   }
 
   void _loadData() async {
-    await itemController.getItemList();
+    print("📦 [ItemsList] Initial load for: ${widget.listType}");
+    
+    // Get first store if available, default to 1
+    int storeId = merchantController.storeList.isNotEmpty 
+        ? (merchantController.storeList[0].storeId ?? 1)
+        : 1;
+    
+    print("📦 [ItemsList] Using storeId: $storeId");
+    
+    await itemController.getItemList(
+      storeId: storeId,
+      posId: 1,
+      recordsPerPage: 100,
+      offset: 0,
+    );
+    print("✅ [ItemsList] Initial load completed - Items loaded: ${itemController.itemList.length}");
+  }
+
+  Future<void> _onRefresh() async {
+    print("🔄 [ItemsList] Pull-to-refresh triggered for: ${widget.listType}");
+    
+    // Get first store if available, default to 1
+    int storeId = merchantController.storeList.isNotEmpty 
+        ? (merchantController.storeList[0].storeId ?? 1)
+        : 1;
+    
+    // Reload items with actual store ID
+    await itemController.getItemList(
+      storeId: storeId,
+      posId: 1,
+      recordsPerPage: 100,
+      offset: 0,
+    );
+    
+    print("✅ [ItemsList] Pull-to-refresh completed - Items: ${itemController.itemList.length}");
   }
 
   List<Items> getItems() {
@@ -61,57 +97,64 @@ class _ItemsListState extends State<ItemsList> {
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
             )
-            : ListView.builder(
-              itemCount: items.length,
-              itemBuilder: (context, index) {
-                var item = items[index];
-                return Card(
-                  margin: EdgeInsets.symmetric(
-                    horizontal: Dimensions.width16,
-                    vertical: Dimensions.height8,
-                  ),
-                  elevation: 2,
-                  child: ListTile(
-                    contentPadding: EdgeInsets.all(Dimensions.height16),
-                    leading: CircleAvatar(
-                      backgroundColor: Theme.of(context).cardColor,
-                      child: Icon(
-                        Icons.inventory_2,
-                        color: Theme.of(context).iconTheme.color,
-                      ),
+            : RefreshIndicator(
+              onRefresh: _onRefresh,
+              displacement: 40,
+              strokeWidth: 2.5,
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              color: const Color(0xFF00308F),
+              child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                itemCount: items.length,
+                itemBuilder: (context, index) {
+                  var item = items[index];
+                  return Card(
+                    margin: EdgeInsets.symmetric(
+                      horizontal: Dimensions.width16,
+                      vertical: Dimensions.height8,
                     ),
-                    title: Text(
-                      item.itemName ?? 'Unknown Item',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(height: Dimensions.height8),
-                        Text(
-                          'Stock: ${item.currentStock ?? 0}',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                        Text(
-                          'Price: ₱${item.price?.toStringAsFixed(2) ?? '0.00'}',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ],
-                    ),
-                    trailing: Container(
-                      padding: EdgeInsets.all(Dimensions.height8),
-                      decoration: BoxDecoration(
-                        color: _getStockStatusColor(
-                          context,
-                          item.currentStock ?? 0,
-                        ),
-                        borderRadius: BorderRadius.circular(
-                          Dimensions.radius15,
+                    elevation: 2,
+                    child: ListTile(
+                      contentPadding: EdgeInsets.all(Dimensions.height16),
+                      leading: CircleAvatar(
+                        backgroundColor: Theme.of(context).cardColor,
+                        child: Icon(
+                          Icons.inventory_2,
+                          color: Theme.of(context).iconTheme.color,
                         ),
                       ),
-                      child: Text(
-                        _getStockStatus(item.currentStock ?? 0),
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      title: Text(
+                        item.itemName ?? 'Unknown Item',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(height: Dimensions.height8),
+                          Text(
+                            'Stock: ${item.currentStock ?? 0}',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          Text(
+                            'Price: ₱${item.price?.toStringAsFixed(2) ?? '0.00'}',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ],
+                      ),
+                      trailing: Container(
+                        padding: EdgeInsets.all(Dimensions.height8),
+                        decoration: BoxDecoration(
+                          color: _getStockStatusColor(
+                            context,
+                            item.currentStock ?? 0,
+                          ),
+                          borderRadius: BorderRadius.circular(
+                            Dimensions.radius15,
+                          ),
+                        ),
+                        child: Text(
+                          _getStockStatus(item.currentStock ?? 0),
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onPrimary,
                         ),
                       ),
@@ -119,6 +162,7 @@ class _ItemsListState extends State<ItemsList> {
                   ),
                 );
               },
+              ),
             );
       },
     );

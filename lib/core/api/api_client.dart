@@ -15,11 +15,12 @@ class ApiClient {
           validateStatus: (status) {
             return status! < 500;
           },
-          connectTimeout: const Duration(seconds: 5),
-          receiveTimeout: const Duration(seconds: 30),
-          sendTimeout: const Duration(seconds: 10),
+          connectTimeout: const Duration(seconds: 3),
+          receiveTimeout: const Duration(seconds: 20),
+          sendTimeout: const Duration(seconds: 7),
         ),
       );
+
 
   void updateAuthToken(String? token) {
     if (token != null && token.isNotEmpty) {
@@ -35,9 +36,8 @@ class ApiClient {
     String? authToken,
   }) async {
     try {
-      if (authToken != null) {
-        updateAuthToken(authToken);
-      }
+      // Always update the auth header so null explicitly clears stale tokens.
+      updateAuthToken(authToken);
 
       Response response = await _dio.get(uri, queryParameters: queryParams);
       return response;
@@ -72,9 +72,8 @@ class ApiClient {
       print("With data: $data");
       print("And authToken: $authToken");
 
-      if (authToken != null) {
-        updateAuthToken(authToken);
-      }
+      // Always update the auth header so null explicitly clears stale tokens.
+      updateAuthToken(authToken);
 
       _dio.options.contentType = Headers.jsonContentType;
 

@@ -76,7 +76,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16, color: Colors.grey),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 20),
               Obx(
                 () => Text(
                   'Time remaining: ${otpController.getFormattedTime()}',

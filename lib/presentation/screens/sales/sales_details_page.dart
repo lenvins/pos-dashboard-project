@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pos_dashboard/core/utils/dimensions.dart';
 import 'package:pos_dashboard/presentation/controllers/top_dashboard_controller.dart';
-import 'package:pos_dashboard/presentation/widgets/date_selector.dart';
+import 'package:pos_dashboard/presentation/widgets/date_selector.dart'
+    as DateSelectorWidget;
 
 class SalesDetailsPage extends StatefulWidget {
   const SalesDetailsPage({super.key});
@@ -60,13 +61,15 @@ class _SalesDetailsPageState extends State<SalesDetailsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                DateSelector(
-                  selectedDate: _selectedDate,
-                  onDateChanged: (newDate) {
+                DateSelectorWidget.PeriodSelector(
+                  initialRange:
+                      DateTimeRange(start: _selectedDate, end: _selectedDate),
+                  initialPeriod: DateSelectorWidget.DatePeriod.today,
+                  onRangeChanged: (range, period) {
                     setState(() {
-                      _selectedDate = newDate;
-                      _refreshData();
+                      _selectedDate = range.start;
                     });
+                    _refreshData();
                   },
                 ),
                 SizedBox(height: Dimensions.height30),

@@ -38,6 +38,10 @@ class BarChartWidget extends StatelessWidget {
         values.isEmpty ? -1 : DateTime.now().hour % values.length;
     final bool hasRange = values.isNotEmpty && maxValue > minValue;
 
+    const double yInterval = 50;
+    final double dynamicMaxY = maxValue == 0 ? 100 : (maxValue * 1.2);
+    final double maxY = (dynamicMaxY / yInterval).ceil() * yInterval;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -55,7 +59,7 @@ class BarChartWidget extends StatelessWidget {
         BarChartData(
           alignment: BarChartAlignment.spaceAround,
           groupsSpace: 8,
-          maxY: maxValue == 0 ? 100 : maxValue * 1.2,
+          maxY: maxY,
           minY: 0,
           barTouchData: BarTouchData(
             enabled: true,
@@ -109,7 +113,11 @@ class BarChartWidget extends StatelessWidget {
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 60,
+                interval: yInterval,
                 getTitlesWidget: (value, meta) {
+                  if (value % yInterval != 0) {
+                    return const SizedBox.shrink();
+                  }
                   return Text(
                     'PHP ${value.toInt()}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -128,10 +136,7 @@ class BarChartWidget extends StatelessWidget {
           ),
           gridData: FlGridData(
             show: true,
-            horizontalInterval:
-                values.isEmpty || values.every((v) => v == 0)
-                    ? 20
-                    : max(maxValue / 5, 1),
+            horizontalInterval: yInterval,
             getDrawingHorizontalLine: (value) {
               return FlLine(
                 color: Theme.of(context).dividerColor.withValues(alpha: 0.2),

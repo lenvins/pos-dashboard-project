@@ -25,55 +25,60 @@ class TopDashboardController extends GetxController {
 
   final List<double> _hourlySales = List.filled(24, 0.0);
   List<double> get hourlySales => _hourlySales;
+
+  bool _isOfflineMode = false;
+  bool get isOfflineMode => _isOfflineMode;
+
+  String? _lastError;
+  String? get lastError => _lastError;
   
   Future<void> getTopList({
     required DateTime date,
     required List<int> storeIds,
   }) async {
     try {
+      print("📡 [TopDashboardController] Attempting API call...");
       dio.Response response = await topDashboardRepo.getTopList(
         date: date,
         storeIds: storeIds,
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print("Got data. Source: top_dashboard_controller.dart");
+        print("✅ [TopDashboardController] Got data from API - Response data: ${response.data}");
         final model = TopDashboardModel.fromJson(response.data ?? {});
 
-        if (_hasUsableApiData(model)) {
-          _applyDashboardData(model);
-          _logLoadedSummary(source: "api");
-          update();
-          return;
-        }
+        print("📊 [TopDashboardController] Parsed model - Gross Sales: ${model.grossSales}, Items: ${model.top5Items?.length ?? 0}, Categories: ${model.top5Categories?.length ?? 0}, Employees: ${model.top5Employees?.length ?? 0}");
 
-        print("API returned empty sales summary data. Using temporary mock data.");
-        _applyMockData(
-          date: date,
-          storeIds: storeIds,
-          reason: "empty_api_data",
-        );
+        // Always apply API data when we get a 200/201 response - don't fall back to mock
+        _applyDashboardData(model);
+        _isOfflineMode = false;
+        _lastError = null;
+        _logLoadedSummary(source: "api");
         update();
         return;
       } else {
         print(
-          "No data. Source: top_dashboard_controller.dart, status code: ${response.statusCode}",
+          "❌ [TopDashboardController] API error - status code: ${response.statusCode}",
         );
         _applyMockData(
           date: date,
           storeIds: storeIds,
           reason: "status_${response.statusCode}",
         );
+        _isOfflineMode = true;
+        _lastError = "No internet connection. Pull to refresh when connection is restored.";
         update();
         return;
       }
     } catch (e) {
-      print("Error in getTopList: $e");
+      print("❌ [TopDashboardController] Exception: $e");
       _applyMockData(
         date: date,
         storeIds: storeIds,
         reason: "exception",
       );
+      _isOfflineMode = true;
+      _lastError = "Network error: $e";
       update();
       return;
     }
@@ -86,6 +91,13 @@ class TopDashboardController extends GetxController {
     _top5ItemsList = _safeTop5Items(model);
     _barchartPerHour = model.barchartPerHour;
     _setHourlySalesFromChartData(_barchartPerHour);
+  }
+
+  void clearOfflineMode() {
+    print("🔄 [TopDashboardController] Clearing offline mode flags");
+    _isOfflineMode = false;
+    _lastError = null;
+    update();
   }
 
   bool _hasUsableApiData(TopDashboardModel model) {

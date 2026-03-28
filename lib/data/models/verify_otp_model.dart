@@ -40,10 +40,31 @@ class VerifyOTPModel {
   set lastName(String? lastName) => _lastName = lastName;
 
   VerifyOTPModel.fromJson(Map<String, dynamic> json) {
-    _statusCode = json['status_code'];
-    _message = json['message'];
-    _userId = json['UserId'];
-    _firstName = json['FirstName'];
-    _lastName = json['LastName'];
+    // Try multiple possible response key formats
+    _statusCode = json['status_code'] ?? 
+                  json['statusCode'] ?? 
+                  json['code'] ?? 
+                  (json['success'] == true ? 200 : 400);
+    
+    _message = json['message'] ?? 
+               json['Message'] ?? 
+               json['msg'] ?? 
+               '';
+    
+    _userId = json['UserId'] ?? 
+              json['user_id'] ?? 
+              json['userId'] ?? 
+              json['id'] ?? 
+              '';
+    
+    _firstName = json['FirstName'] ?? 
+                 json['first_name'] ?? 
+                 json['firstName'] ?? 
+                 '';
+    
+    _lastName = json['LastName'] ?? 
+                json['last_name'] ?? 
+                json['lastName'] ?? 
+                '';
   }
 }

@@ -17,7 +17,15 @@ class SendOTPModel {
   set message(String? message) => _message = message;
 
   SendOTPModel.fromJson(Map<String, dynamic> json) {
-    _statusCode = json['status_code'];
-    _message = json['message'];
+    // Try multiple possible response key formats
+    _statusCode = json['status_code'] ?? 
+                  json['statusCode'] ?? 
+                  json['code'] ?? 
+                  (json['success'] == true ? 200 : 400);
+    
+    _message = json['message'] ?? 
+               json['Message'] ?? 
+               json['msg'] ?? 
+               'OTP sent successfully';
   }
 }
