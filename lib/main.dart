@@ -25,6 +25,11 @@ import 'package:pos_dashboard/core/utils/app_constants.dart';
 import 'package:pos_dashboard/core/api/api_client.dart';
 import 'package:pos_dashboard/core/theme/app_theme.dart';
 import 'package:pos_dashboard/presentation/controllers/otp_controller.dart';
+import 'package:pos_dashboard/presentation/screens/login/pin_verification_screen.dart';
+import 'package:pos_dashboard/presentation/screens/dashboard/dashboard_screen.dart';
+import 'package:pos_dashboard/presentation/screens/settings/settings_screen.dart';
+import 'package:pos_dashboard/presentation/bindings/settings_binding.dart';
+import 'package:pos_dashboard/presentation/widgets/activity_wrapper.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,27 +41,10 @@ Future<void> main() async {
     final themeController = Get.put(ThemeController());
     await themeController.loadTheme();
 
-    Get.put<ApiClient>(ApiClient(baseUrl: AppConstants.BASE_URL));
-    Get.put<Dio>(Dio(BaseOptions(baseUrl: AppConstants.BASE_URL)));
-
-    Get.put<LoginRepository>(LoginRepository(dio: Get.find()));
-    Get.put<LoginController>(LoginController(loginRepository: Get.find()));
-
-    Get.put<SendOtpRepo>(SendOtpRepo(apiClient: Get.find()));
-    Get.put<VerifyOtpRepo>(VerifyOtpRepo(apiClient: Get.find(), loginController: Get.find()));
-    Get.put<VerifyPinRepo>(VerifyPinRepo(apiClient: Get.find(), loginController: Get.find()));
-
-    Get.lazyPut(() => OTPController(), fenix: true);
+    // Dependencies initialized
+    // Controllers for FutureBuilder
+    Get.put(LoginController(loginRepository: Get.find()), permanent: true);
     
-    Get.put<ItemRepository>(ItemRepository(apiClient: Get.find(), loginController: Get.find()));
-    Get.put<ItemController>(ItemController(itemRepository: Get.find()));
-
-    Get.put<TopDashboardRepo>(TopDashboardRepo(apiClient: Get.find(), loginController: Get.find()));
-    Get.put<TopDashboardController>(TopDashboardController(topDashboardRepo: Get.find()));
-
-    Get.put<MerchantRepository>(MerchantRepository(apiClient: Get.find(), loginController: Get.find()));
-    Get.put<MerchantController>(MerchantController(merchantRepository: Get.find()),);
-
     runApp(const PosDashboardApp());
   } catch (e) {
     print('Initialization failed: $e');
@@ -87,14 +75,10 @@ class PosDashboardApp extends StatelessWidget {
 
         if (snapshot.hasError) {
           print('Error determining initial route: ${snapshot.error}');
-          return GetMaterialApp(
-            debugShowCheckedModeBanner: false,
-            theme: AppTheme.lightTheme,
-            home: LoginScreen(),
-          );
+          return LoginScreen();
         }
 
-        final initialRoute = snapshot.data ?? '/';
+        final initialRoute = snapshot.data ?? '/dashboard';
 
         return GetBuilder<ThemeController>(
           builder: (themeController) => GetMaterialApp(
@@ -106,24 +90,25 @@ class PosDashboardApp extends StatelessWidget {
             initialRoute: initialRoute,
             getPages: [
               GetPage(
-                name: "/",
+                name: '/',
                 page: () => LoginScreen(),
                 transition: Transition.fadeIn,
               ),
               GetPage(
-                name: "/otp-verification",
-                page: () => const OTPVerificationScreen(),
+                name: '/pin-verification',
+                page: () => ActivityWrapper(child: PinVerificationScreen()),
                 transition: Transition.fadeIn,
               ),
               GetPage(
-                name: "/pin-verification",
-                page: () => PinVerificationScreen(),
-                transition: Transition.fadeIn,
-              ),
-              GetPage(
-                name: "/dashboard",
-                page: () => const DashboardScreen(),
+                name: '/dashboard',
+                page: () => ActivityWrapper(child: const DashboardScreen()),
                 binding: DashboardBinding(),
+                transition: Transition.fadeIn,
+              ),
+              GetPage(
+                name: '/settings',
+                page: () => const SettingsScreen(),
+                binding: SettingsBinding(),
                 transition: Transition.fadeIn,
               ),
             ],
@@ -143,8 +128,6 @@ class DashboardBinding implements Bindings {
         loginController: Get.find(),
       ),
     );
-     Get.lazyPut(() => TopDashboardController(topDashboardRepo: Get.find()));
-     Get.lazyPut(() => MerchantController(merchantRepository: Get.find()));
   }
 }
 

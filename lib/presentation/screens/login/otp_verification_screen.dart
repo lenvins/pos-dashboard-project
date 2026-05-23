@@ -5,6 +5,7 @@ import 'package:pos_dashboard/core/utils/dimensions.dart';
 import 'package:pos_dashboard/presentation/controllers/login_controller.dart';
 import 'package:pos_dashboard/presentation/controllers/otp_controller.dart';
 
+/* COMMENTED OUT OTPVerificationScreen FOR DIRECT DASHBOARD ACCESS
 class OTPVerificationScreen extends StatefulWidget {
   const OTPVerificationScreen({super.key});
 
@@ -217,3 +218,4 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
     );
   }
 }
+*/

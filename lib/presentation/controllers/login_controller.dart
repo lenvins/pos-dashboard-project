@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:get/get.dart';
 import 'package:dio/dio.dart' as dio;
+import 'package:get_storage/get_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:pos_dashboard/data/models/login_model.dart';
 import 'package:pos_dashboard/data/models/verify_otp_model.dart';
@@ -9,21 +11,28 @@ import 'package:pos_dashboard/data/models/verify_pin_model.dart';
 import 'package:pos_dashboard/data/repositories/send_otp_repo.dart';
 import 'package:pos_dashboard/data/repositories/verify_otp_repo.dart';
 import 'package:pos_dashboard/data/repositories/verify_pin_repo.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pos_dashboard/data/repositories/login_repo.dart';
+import 'package:pos_dashboard/data/repositories/change_password_repo.dart';
 
-class LoginController extends GetxController {
+class LoginController extends GetxController with WidgetsBindingObserver {
+  // Background-based session tracking
+  final Rx<Duration> totalBackgroundTime = Duration.zero.obs;
+  DateTime? _pauseTime;
+  final Rx<DateTime?> lastActivityTime = Rx<DateTime?>(null); // Keep for compatibility if needed
+
   final LoginRepository loginRepository;
-  final _prefs = SharedPreferences.getInstance();
 
   //RX for reactive state management
-  final RxString _accessToken = RxString('');
+  final RxString _accessToken = ''.obs;
   final RxBool isPinSetup = false.obs;
+  final RxBool isPinVerified = false.obs;
   final RxBool isLoading = false.obs;
   final RxString errorMessage = ''.obs;
   final RxBool isOTPRequired = false.obs;
-  final Rx<Map<String, String>> tempCredentials = Rx<Map<String, String>>({});
+  final RxMap<String, String> tempCredentials = <String, String>{}.obs;
   
+  // Session expiry
+  static const Duration SESSION_TIMEOUT = Duration(minutes: 5);
 
   final Rx<LoginModel?> loginData = Rx<LoginModel?>(null);
 
@@ -34,22 +43,74 @@ class LoginController extends GetxController {
   String get userName => loginData.value?.userName ?? '';
   String get businessName => loginData.value?.businessName ?? '';
 
-  LoginController( 
-    {
-      required this.loginRepository
+  LoginController({ 
+    required this.loginRepository
+  });
+
+  bool get isSessionExpired {
+    return totalBackgroundTime.value > SESSION_TIMEOUT;
+  }
+
+  /// Reset background accumulator on user activity (called from GestureDetector)
+  void resetBackgroundTime() {
+    totalBackgroundTime.value = Duration.zero;
+  }
+
+  Future<void> checkSessionExpiry() async {
+    if (isSessionExpired) {
+      // Only show expiry if actually background time accumulated
+      if (totalBackgroundTime.value > Duration(minutes: 4)) {
+        await logout(showExpiryDialog: true);
+      }
     }
-  );
+  }
 
   @override
   void onInit() {
     super.onInit();
-    clearStoredData();
+    WidgetsBinding.instance.addObserver(this);
+    _loadLastActivity(); // Keep for legacy
+    // No periodic timer needed for background-only expiry
+  }
+
+@override
+  void onClose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.onClose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _pauseTime = DateTime.now();
+    } else if (state == AppLifecycleState.resumed) {
+      if (_pauseTime != null) {
+        final backgroundDuration = DateTime.now().difference(_pauseTime!);
+        totalBackgroundTime.value += backgroundDuration;
+        _pauseTime = null;
+      }
+      // Always check on resume, activity wrapper will reset on touches
+      checkSessionExpiry();
+    }
+  }
+
+  Future<void> _loadLastActivity() async {
+    final box = GetStorage();
+    String? timeStr = box.read('last_activity');
+    if (timeStr != null) {
+      try {
+        lastActivityTime.value = DateTime.parse(timeStr);
+      } catch (e) {
+        lastActivityTime.value = null;
+      }
+    }
   }
 
   Future<void> clearStoredData() async {
-    final prefs = await _prefs;
-    await prefs.clear();
+    final box = GetStorage();
+    box.erase();
     isPinSetup.value = false;
+    isPinVerified.value = false;
     _accessToken.value = '';
     loginData.value = null;
     tempCredentials.value = {};
@@ -57,15 +118,24 @@ class LoginController extends GetxController {
 
   Future<String> getInitialRoute() async {
     try {
-      final prefs = await _prefs;
-      isPinSetup.value = prefs.getBool('isPinSetup') ?? false;
-      String? storedToken = prefs.getString('access_token');
-      String? storedLoginData = prefs.getString('loginData');
+      final box = GetStorage();
+      isPinSetup.value = box.read('isPinSetup') ?? false;
+      isPinVerified.value = box.read('isPinVerified') ?? false;
+      String? storedToken = box.read('access_token');
+      String? storedLoginData = box.read('loginData');
 
-      if (isPinSetup.value && storedToken != null && storedToken.isNotEmpty && storedLoginData != null) {
+      if (isPinSetup. value && storedToken != null && storedToken.isNotEmpty && storedLoginData != null) {
         _accessToken.value = storedToken;
-
         loginData.value = LoginModel.fromJson(jsonDecode(storedLoginData));
+        await _loadLastActivity();
+        await checkSessionExpiry();
+        if (isSessionExpired) {
+          return '/';
+        }
+        // If PIN is already verified, go directly to dashboard
+        if (isPinVerified.value) {
+          return '/dashboard';
+        }
         return '/pin-verification';
       }
 
@@ -78,7 +148,9 @@ class LoginController extends GetxController {
     }
   }
 
+  String? loginPassword;
   Future<void> login(String username, String password) async {
+    loginPassword = password;
     if (username.isEmpty || password.isEmpty) {
       errorMessage.value = "Please enter username and password";
       return;
@@ -91,11 +163,9 @@ class LoginController extends GetxController {
       final response = await loginRepository.login(username, password);
 
       if (response.statusCode == 200) {
-        // Store response data in loginData
         if (response.data != null) {
           loginData.value = LoginModel.fromJson(response.data);
           
-          // Use access token from login response
           if (response.data['access_token'] != null) {
             _accessToken.value = response.data['access_token'];
           }
@@ -106,18 +176,27 @@ class LoginController extends GetxController {
             _accessToken.value = loginData.value!.accessToken!;
           }
 
-          final prefs = await _prefs;
-          await prefs.setString('access_token', _accessToken.value);
-          await prefs.setString('loginData', jsonEncode(loginData.value));
+          final box = GetStorage();
+          box.write('access_token', _accessToken.value);
+          box.write('loginData', jsonEncode(loginData.value));
+          // Don't reset isPinSetup here, check if it's already set
+          bool pinAlreadySetup = box.read('isPinSetup') ?? false;
+          if (!pinAlreadySetup) {
+            box.write('isPinSetup', false);
+          }
 
-          // Store credentials temporarily for OTP verification
           tempCredentials.value = {
             'username': username,
             'password': password
           };
 
-          // Send OTP to user's phone
-          await _sendOTPForVerification();
+          isOTPRequired.value = false;
+          // If PIN is already set up, go to PIN verification, otherwise go to dashboard
+          if (pinAlreadySetup) {
+            Get.offAllNamed('/pin-verification');
+          } else {
+            Get.offAllNamed('/dashboard');
+          }
         }
       } else {
         errorMessage.value = "Login failed. Please check your credentials.";
@@ -134,147 +213,10 @@ class LoginController extends GetxController {
         } else if (e.response?.statusCode == 400) {
           error = "Invalid username or password";
         } else if (e.response?.statusCode == 500) {
-          error = "Server error. Please try again later";
+          error = "Server error. Please try again later.";
         }
       }
       errorMessage.value = error;
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  Future<void> _sendOTPForVerification() async {
-    try {
-      final sendOtpRepo = Get.find<SendOtpRepo>();
-      isOTPRequired.value = true;
-
-      print("📱 Starting OTP Send Process");
-      print("Phone Number: $phoneNumber");
-      print("User ID: $userId");
-      print("Access Token: ${_accessToken.value.isNotEmpty ? 'Present' : 'Empty'}");
-
-      if (phoneNumber.isEmpty) {
-        errorMessage.value = "Phone number not found. Please contact support.";
-        print("❌ ERROR: Phone number is empty");
-        isOTPRequired.value = false;
-        return;
-      }
-
-      if (userId.isEmpty) {
-        errorMessage.value = "User ID not found. Please contact support.";
-        print("❌ ERROR: User ID is empty");
-        isOTPRequired.value = false;
-        return;
-      }
-
-      final response = await sendOtpRepo.getSendOTP(
-        phoneNumber: phoneNumber,
-        userId: userId,
-        accessToken: accessToken
-      );
-
-      print("📤 OTP Send API Response:");
-      print("Status: ${response.statusCode}");
-      print("Data: ${response.data}");
-
-      // Check if API returned success (various status codes possible)
-      if (response.statusCode == 200 || 
-          response.statusCode == 201 || 
-          (response.data != null && response.statusCode! < 300)) {
-        print("✅ OTP sent successfully!");
-        Get.offAllNamed('/otp-verification');
-      } else {
-        print("❌ OTP Send Failed - Status: ${response.statusCode}");
-        print("Response: ${response.data}");
-        errorMessage.value = "Failed to send OTP. Please try again.";
-        isOTPRequired.value = false;
-      }
-    } catch (e) {
-      print("❌ Error sending OTP: $e");
-      errorMessage.value = "Failed to send OTP: ${e.toString()}";
-      isOTPRequired.value = false;
-    }
-  }
-
-  Future<void> verifyOTP(String otp) async {
-    final verifyOtpRepo = Get.find<VerifyOtpRepo>();
-    
-    if (otp.isEmpty || otp.length != 6) {
-      errorMessage.value = "Please enter a valid 6-digit OTP";
-      return;
-    }
-
-    isLoading.value = true;
-    errorMessage.value = '';
-
-    try {
-      print("Verifying OTP: $otp");
-      print("Access Token: $accessToken");
-      print("User ID: $userId");
-      print("Phone Number: $phoneNumber");
-      
-      final response = await verifyOtpRepo.getVerifyOTP(otp);
-
-      print("OTP Response Status: ${response.statusCode}");
-      print("OTP Response Data: ${response.data}");
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final verifyOTPModel = VerifyOTPModel.fromJson(response.data);
-        
-        print("Parsed Status Code: ${verifyOTPModel.statusCode}");
-        print("Parsed Message: ${verifyOTPModel.message}");
-        print("Parsed UserId: ${verifyOTPModel.userId}");
-        
-        // Accept various success status codes
-        if ((verifyOTPModel.statusCode == 200 || 
-             verifyOTPModel.statusCode == 0 || 
-             verifyOTPModel.statusCode == 1 ||
-             verifyOTPModel.statusCode == null) &&
-            (response.statusCode ?? 500) < 300) {
-          
-          // OTP verification successful - proceed with login
-          dio.Response loginResponse = await loginRepository.login(
-            tempCredentials.value['username'] ?? '',
-            tempCredentials.value['password'] ?? '',
-          );
-
-          print("Login Response Status: ${loginResponse.statusCode}");
-
-          if ((loginResponse.statusCode ?? 500) == 200 && loginResponse.data != null) {
-            loginData.value = LoginModel.fromJson(loginResponse.data);
-            _accessToken.value = loginResponse.data['access_token'] ?? _accessToken.value;
-
-            final prefs = await _prefs;
-            await prefs.setString('access_token', _accessToken.value);
-            await prefs.setString('loginData', jsonEncode(loginData.value));
-
-            isOTPRequired.value = false;
-            Get.offAllNamed('/dashboard');
-          } else {
-            errorMessage.value = "Login failed after OTP verification. Please try again."; 
-          }
-        } else {
-          errorMessage.value = verifyOTPModel.message ?? "Invalid OTP. Please try again.";
-        }
-      } else if (response.statusCode == 500) {
-        // Server error - likely model mismatch
-        String errorMsg = "Server error";
-        if (response.data != null) {
-          if (response.data['Message'] != null) {
-            errorMsg = response.data['Message'];
-          }
-          if (response.data['ExceptionMessage'] != null) {
-            errorMsg = response.data['ExceptionMessage'];
-          }
-        }
-        errorMessage.value = "Verification error: $errorMsg";
-        print("❌ Server Error: $errorMsg");
-      } else {
-        errorMessage.value = "OTP verification failed. Server error. Please try again.";
-      }
-    } catch (e) {
-      print("OTP verification error: $e");
-      errorMessage.value = "OTP verification error: ${e.toString()}";
     } finally {
       isLoading.value = false;
     }
@@ -298,9 +240,11 @@ class LoginController extends GetxController {
 
         if (verifyPINModel.statusCode == 200 || verifyPINModel.statusCode == 0) {
           if (verifyPINModel.message?.toLowerCase() == "success") {
-            final prefs = await _prefs;
-            await prefs.setBool('isPinSetup', true);
+            final box = GetStorage();
+            box.write('isPinSetup', true);
+            box.write('isPinVerified', true);
             isPinSetup.value = true;
+            isPinVerified.value = true;
             Get.offAllNamed('/dashboard');
           } else {
             errorMessage.value = verifyPINModel.message ?? "PIN Verification failed";
@@ -319,39 +263,107 @@ class LoginController extends GetxController {
     }
   }
 
-  Future<void> logout() async {
+  Future<void> logout({bool showExpiryDialog = false}) async {
     await clearStoredData();
-    Get.offAllNamed('/');
+    if (showExpiryDialog) {
+      Get.dialog(
+        _buildExpiryDialog(),
+        barrierDismissible: false,
+      );
+    } else {
+      Get.offAllNamed('/');
+    }
   }
 
-  Future<void> resendOTP() async {
-    final sendOtpRepo = Get.find<SendOtpRepo>();
-    isLoading.value = true;
-    errorMessage.value = '';
-    try {
-      print("Resending OTP to: $phoneNumber");
-      final response = await sendOtpRepo.getSendOTP(
-        phoneNumber: phoneNumber,
-        userId: userId,
-        accessToken: accessToken
-      );
-      
-      print("Resend OTP Response: ${response.statusCode}");
-      print("Resend OTP Data: ${response.data}");
-      
-      await Future.delayed(const Duration(seconds: 2));
-      Get.snackbar(
-        'Success',
-        'OTP has been resent to your mobile phone',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-      );
-    } catch (e) {
-      print("Error resending OTP: $e");
-      errorMessage.value = "Failed to resend OTP. Please try again";
-    } finally {
-      isLoading.value = false;
-    }
+  Widget _buildExpiryDialog() {
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Container(
+        padding: EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.blue[900]!, width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.blue[900]!.withOpacity(0.1),
+              blurRadius: 10,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.timer_off_outlined,
+                size: 48,
+                color: Colors.blue[900],
+              ),
+            ),
+
+            SizedBox(height: 16),
+            Text(
+              'Session Login Expired',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue[900],
+                fontFamily: 'Roboto',
+              ),
+            ),
+            SizedBox(height: 8),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Your session has expired after 5 minutes of inactivity. Please log in again.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.black87,
+                  height: 1.4,
+                  fontFamily: 'Roboto',
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Get.back();
+                  Get.offAllNamed('/');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue[900],
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: 2,
+                ),
+                child: Text(
+                  'Log in Again',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'Roboto',
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

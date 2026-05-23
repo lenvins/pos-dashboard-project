@@ -32,10 +32,15 @@ class TopDashboardController extends GetxController {
   String? _lastError;
   String? get lastError => _lastError;
   
+  RxBool isLoading = false.obs;
+  
   Future<void> getTopList({
     required DateTime date,
     required List<int> storeIds,
   }) async {
+    if (isLoading.value) return; // Prevent overlapping calls
+    
+    isLoading.value = true;
     try {
       print("📡 [TopDashboardController] Attempting API call...");
       dio.Response response = await topDashboardRepo.getTopList(
@@ -49,39 +54,33 @@ class TopDashboardController extends GetxController {
 
         print("📊 [TopDashboardController] Parsed model - Gross Sales: ${model.grossSales}, Items: ${model.top5Items?.length ?? 0}, Categories: ${model.top5Categories?.length ?? 0}, Employees: ${model.top5Employees?.length ?? 0}");
 
-        // Always apply API data when we get a 200/201 response - don't fall back to mock
         _applyDashboardData(model);
         _isOfflineMode = false;
         _lastError = null;
         _logLoadedSummary(source: "api");
-        update();
-        return;
       } else {
-        print(
-          "❌ [TopDashboardController] API error - status code: ${response.statusCode}",
-        );
-        _applyMockData(
-          date: date,
-          storeIds: storeIds,
-          reason: "status_${response.statusCode}",
-        );
+        print("❌ [TopDashboardController] API error - status code: ${response.statusCode}");
         _isOfflineMode = true;
-        _lastError = "No internet connection. Pull to refresh when connection is restored.";
-        update();
-        return;
+        _lastError = "API error ${response.statusCode}. Pull to refresh.";
+        _clearData();
       }
     } catch (e) {
-      print("❌ [TopDashboardController] Exception: $e");
-      _applyMockData(
-        date: date,
-        storeIds: storeIds,
-        reason: "exception",
-      );
+      print("❌ [TopDashboardController] Network error: $e");
       _isOfflineMode = true;
-      _lastError = "Network error: $e";
+      _lastError = "Network error. Check connection and pull to refresh.";
+      _clearData();
+    } finally {
+      isLoading.value = false;
       update();
-      return;
     }
+  }
+
+  void _clearData() {
+    _topDashboardModel = null;
+    _top5CategoriesList = [];
+    _top5EmployeesList = [];
+    _top5ItemsList = [];
+    _barchartPerHour = null;
   }
 
   void _applyDashboardData(TopDashboardModel model) {

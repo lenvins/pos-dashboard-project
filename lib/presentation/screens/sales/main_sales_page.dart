@@ -8,6 +8,7 @@ import 'package:pos_dashboard/presentation/screens/categories/categories_section
 import 'package:pos_dashboard/presentation/screens/employees/employees_section.dart';
 import 'package:pos_dashboard/presentation/screens/sales/charts/chart_section.dart';
 import 'package:pos_dashboard/presentation/screens/items/item_section.dart';
+import 'package:pos_dashboard/presentation/controllers/item_controller.dart';
 import 'package:pos_dashboard/presentation/widgets/date_selector.dart' show PeriodSelector, DatePeriod;
 
 class MainSalesPage extends StatefulWidget {
@@ -18,9 +19,9 @@ class MainSalesPage extends StatefulWidget {
 }
 
 class _MainSalesPage extends State<MainSalesPage> {
-  final MerchantController merchantController = Get.find<MerchantController>();
-  final TopDashboardController topDashboardController =
-      Get.find<TopDashboardController>();
+  final MerchantController merchantController = Get.put(MerchantController(merchantRepository: Get.find()), permanent: true); 
+  final TopDashboardController topDashboardController = Get.put(TopDashboardController(topDashboardRepo: Get.find()), permanent: true);
+  final ItemController itemController = Get.put(ItemController(itemRepository: Get.find()), permanent: true);
   final ScrollController _salesScrollController = ScrollController();
 
   late DateTimeRange selectedRange;
@@ -34,7 +35,7 @@ class _MainSalesPage extends State<MainSalesPage> {
     final now = DateTime.now();
     selectedRange = DateTimeRange(start: now, end: now);
     selectedPeriod = DatePeriod.today;
-    _loadData();
+    // Skip initial loadData() to preserve state on navigation back
   }
 
   void _loadData() async {
@@ -63,6 +64,8 @@ class _MainSalesPage extends State<MainSalesPage> {
         date: selectedRange.start,
         storeIds: [selectedStoreId!],
       );
+      // Load items for both stores
+      itemController.getItemList(storeId: selectedStoreId!);
     }
   }
 
@@ -78,8 +81,10 @@ class _MainSalesPage extends State<MainSalesPage> {
   Future<void> _onRefresh() async {
     print("🔄 [MainSalesPage] Pull-to-refresh triggered");
     
-    // Simply reload data directly like SalesDetailsPage does
-    _loadTopDashboardData();
+    await merchantController.getMerchantList();
+    if (selectedStoreId != null) {
+      _loadTopDashboardData();
+    }
     
     // Give a small delay to allow UI to respond
     await Future.delayed(const Duration(milliseconds: 500));
@@ -93,11 +98,14 @@ class _MainSalesPage extends State<MainSalesPage> {
     super.dispose();
   }
 
-  List<Stores> getStores() {
-    if (merchantController.storeList.isEmpty) {
-      return [];
-    }
-    return merchantController.storeList;
+List<Stores> getStores() {
+    // Only Gabs Binalot store - hide all others
+    final allStores = merchantController.storeList;
+    final filtered = allStores.where((store) => 
+      (store.storeName?.toLowerCase().contains('gabs') ?? false) &&
+      (store.storeName?.toLowerCase().contains('binalot') ?? false)
+    ).toList();
+    return filtered.isNotEmpty ? filtered : [Stores(storeId: 1, storeName: 'Gabs Binalot')];
   }
 
   @override
@@ -188,11 +196,11 @@ class _MainSalesPage extends State<MainSalesPage> {
                   }
                   return ListView.separated(
                     scrollDirection: Axis.horizontal,
-                    itemCount: merchantController.storeList.length,
+                    itemCount: getStores().length,
                     separatorBuilder:
                         (context, index) => SizedBox(width: Dimensions.width10),
                     itemBuilder: (context, index) {
-                      final store = merchantController.storeList[index];
+                      final store = getStores()[index];
                       return ChoiceChip(
                         label: Text(store.storeName ?? 'Unknown Store'),
                         selected: selectedStoreId == store.storeId,
@@ -201,6 +209,8 @@ class _MainSalesPage extends State<MainSalesPage> {
                             setState(() {
                               selectedStoreId = store.storeId;
                               selectedStoreName = store.storeName;
+                            });
+                            Future.delayed(Duration(milliseconds: 300), () {
                               _loadTopDashboardData();
                             });
                           }

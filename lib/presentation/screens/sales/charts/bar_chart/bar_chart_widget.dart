@@ -38,8 +38,22 @@ class BarChartWidget extends StatelessWidget {
         values.isEmpty ? -1 : DateTime.now().hour % values.length;
     final bool hasRange = values.isNotEmpty && maxValue > minValue;
 
-    const double yInterval = 50;
-    final double dynamicMaxY = maxValue == 0 ? 100 : (maxValue * 1.2);
+// Dynamic yInterval based on data range for clean UI
+final double dynamicMaxY = maxValue == 0 ? 100 : (maxValue * 1.2);
+    double yInterval;
+    if (dynamicMaxY < 100) {
+      yInterval = 20;
+    } else if (dynamicMaxY < 500) {
+      yInterval = 50;
+    } else if (dynamicMaxY < 2000) {
+      yInterval = 200;
+    } else if (dynamicMaxY < 5000) {
+      yInterval = 500;
+    } else if (dynamicMaxY < 20000) {
+      yInterval = 2000;
+    } else {
+      yInterval = (dynamicMaxY / 6).roundToDouble() * 10;
+    }
     final double maxY = (dynamicMaxY / yInterval).ceil() * yInterval;
 
     return Container(
