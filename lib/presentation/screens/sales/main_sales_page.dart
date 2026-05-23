@@ -35,8 +35,14 @@ class _MainSalesPage extends State<MainSalesPage> {
     final now = DateTime.now();
     selectedRange = DateTimeRange(start: now, end: now);
     selectedPeriod = DatePeriod.today;
-    // Skip initial loadData() to preserve state on navigation back
+
+    // Load dashboard data immediately for "today".
+    // (Previously this was skipped and data could stay empty until user interaction.)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadData();
+    });
   }
+
 
   void _loadData() async {
     print("📍 [MainSalesPage] _loadData() called");

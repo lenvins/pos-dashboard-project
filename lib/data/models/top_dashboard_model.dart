@@ -1,22 +1,24 @@
 class TopDashboardModel {
   int? statusCode;
   String? message;
+
   String? barchartPerHour;
   double? salesToday;
   double? grossSales;
   int? receipts;
+
   double? refunds;
   double? discounts;
   double? costOfGoods;
   double? grossProfit;
 
-  late List<Top5Categories> _top5Categories;
+  // Always initialize to avoid late-init crashes and allow empty state.
+  List<Top5Categories> _top5Categories = [];
+  List<Top5Employees> _top5Employees = [];
+  List<Top5Items> _top5Items = [];
+
   List<Top5Categories> get top5Categories => _top5Categories;
-
-  late List<Top5Employees> _top5Employees;
   List<Top5Employees> get top5Employees => _top5Employees;
-
-  late List<Top5Items> _top5Items;
   List<Top5Items> get top5Items => _top5Items;
 
   TopDashboardModel({
@@ -39,34 +41,78 @@ class TopDashboardModel {
     _top5Items = top5Items;
   }
 
+  static dynamic _pick(Map<String, dynamic> json, List<String> keys) {
+    for (final k in keys) {
+      if (json.containsKey(k)) return json[k];
+      // also try case-insensitive match
+      final match = json.keys.where((existing) => existing.toLowerCase() == k.toLowerCase());
+      if (match.isNotEmpty) return json[match.first];
+
+    }
+    return null;
+  }
+
+  static double? _pickDouble(Map<String, dynamic> json, List<String> keys) {
+    final v = _pick(json, keys);
+    if (v == null) return null;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString());
+  }
+
+  static int? _pickInt(Map<String, dynamic> json, List<String> keys) {
+    final v = _pick(json, keys);
+    if (v == null) return null;
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse(v.toString());
+  }
+
+  static String? _pickString(Map<String, dynamic> json, List<String> keys) {
+    final v = _pick(json, keys);
+    if (v == null) return null;
+    return v.toString();
+  }
+
   TopDashboardModel.fromJson(Map<String, dynamic> json) {
-    statusCode = json['status_code'];
-    message = json['message'];
-    barchartPerHour = json['BarchartPerHour'];
-    salesToday = json['SalesToday']?.toDouble();
-    grossSales = json['GrossSales']?.toDouble();
-    receipts = json['Receipts'];
-    refunds = json['Refunds']?.toDouble();
-    discounts = json['Discounts']?.toDouble();
-    costOfGoods = json['CostOfGoods']?.toDouble();
-    grossProfit = json['GrossProfit']?.toDouble();
-    if (json['Top5Categories'] != null) {
-      _top5Categories = <Top5Categories>[];
-      json['Top5Categories'].forEach((v) {
-        _top5Categories.add(Top5Categories.fromJson(v));
-      });
+    statusCode = _pickInt(json, ['status_code', 'StatusCode']);
+    message = _pickString(json, ['message', 'Message']);
+
+    barchartPerHour = _pickString(
+      json,
+      ['BarchartPerHour', 'barchartPerHour', 'barchart_per_hour', 'Barchartperhour'],
+    );
+
+    salesToday = _pickDouble(json, ['SalesToday', 'salesToday', 'sales_today']);
+    grossSales = _pickDouble(json, ['GrossSales', 'grossSales', 'gross_sales']);
+    receipts = _pickInt(json, ['Receipts', 'receipts']);
+
+    refunds = _pickDouble(json, ['Refunds', 'refunds']);
+    discounts = _pickDouble(json, ['Discounts', 'discounts']);
+    costOfGoods = _pickDouble(json, ['CostOfGoods', 'costOfGoods', 'cost_of_goods']);
+    grossProfit = _pickDouble(json, ['GrossProfit', 'grossProfit', 'gross_profit']);
+
+    final catsRaw = _pick(json, ['Top5Categories', 'top5_categories']);
+    if (catsRaw is List) {
+      _top5Categories = catsRaw
+          .whereType<Map<String, dynamic>>()
+          .map((e) => Top5Categories.fromJson(e))
+          .toList();
     }
-    if (json['Top5Employees'] != null) {
-      _top5Employees = <Top5Employees>[];
-      json['Top5Employees'].forEach((v) {
-        _top5Employees.add(Top5Employees.fromJson(v));
-      });
+
+    final empRaw = _pick(json, ['Top5Employees', 'top5_employees']);
+    if (empRaw is List) {
+      _top5Employees = empRaw
+          .whereType<Map<String, dynamic>>()
+          .map((e) => Top5Employees.fromJson(e))
+          .toList();
     }
-    if (json['Top5Items'] != null) {
-      _top5Items = <Top5Items>[];
-      json['Top5Items'].forEach((v) {
-        _top5Items.add(Top5Items.fromJson(v));
-      });
+
+    final itemsRaw = _pick(json, ['Top5Items', 'top5_items']);
+    if (itemsRaw is List) {
+      _top5Items = itemsRaw
+          .whereType<Map<String, dynamic>>()
+          .map((e) => Top5Items.fromJson(e))
+          .toList();
     }
   }
 }
@@ -78,8 +124,14 @@ class Top5Categories {
   Top5Categories({this.categoryName, this.grossSales});
 
   Top5Categories.fromJson(Map<String, dynamic> json) {
-    categoryName = json['CategoryName'];
-    grossSales = json['GrossSales']?.toDouble();
+    categoryName = TopDashboardModel._pickString(
+      json,
+      ['CategoryName', 'categoryName', 'category_name'],
+    );
+    grossSales = TopDashboardModel._pickDouble(
+      json,
+      ['GrossSales', 'grossSales', 'gross_sales'],
+    );
   }
 }
 
@@ -90,8 +142,14 @@ class Top5Employees {
   Top5Employees({this.employeeName, this.grossSales});
 
   Top5Employees.fromJson(Map<String, dynamic> json) {
-    employeeName = json['EmployeeName'];
-    grossSales = json['GrossSales']?.toDouble();
+    employeeName = TopDashboardModel._pickString(
+      json,
+      ['EmployeeName', 'employeeName', 'employee_name'],
+    );
+    grossSales = TopDashboardModel._pickDouble(
+      json,
+      ['GrossSales', 'grossSales', 'gross_sales'],
+    );
   }
 }
 
@@ -102,7 +160,14 @@ class Top5Items {
   Top5Items({this.itemName, this.grossSales});
 
   Top5Items.fromJson(Map<String, dynamic> json) {
-    itemName = json['ItemName'];
-    grossSales = json['GrossSales']?.toDouble();
+    itemName = TopDashboardModel._pickString(
+      json,
+      ['ItemName', 'itemName', 'item_name'],
+    );
+    grossSales = TopDashboardModel._pickDouble(
+      json,
+      ['GrossSales', 'grossSales', 'gross_sales'],
+    );
   }
 }
+

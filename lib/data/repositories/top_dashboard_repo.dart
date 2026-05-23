@@ -20,15 +20,23 @@ class TopDashboardRepo extends GetxService {
 
     String accessToken = loginController.accessToken;
 
+    final formattedDate =
+        "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+
+    // API is case-sensitive in some backends; send both variants defensively.
+    // (Backend should ignore unknown keys.)
     Map<String, dynamic> body = {
-      "Date": "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}",
-      "StoreIds": storeIds
+      "Date": formattedDate,
+      "date": formattedDate,
+      "StoreIds": storeIds,
+      "storeIds": storeIds,
     };
 
     return await apiClient.postData(
-      AppConstants.TOP5_PRODUCT, 
+      AppConstants.TOP5_PRODUCT,
       body,
-      authToken: accessToken
-      );
+      authToken: accessToken,
+    );
   }
 }
+
